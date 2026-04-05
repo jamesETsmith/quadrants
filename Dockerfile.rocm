@@ -1,0 +1,56 @@
+ARG BASE_IMAGE=ubuntu:24.04
+FROM ${BASE_IMAGE} AS base
+
+ARG THE_ROCK_VERSION=7.12.0a20260311
+ARG GFX_FAMILY="gfx94X-dcgpu"
+ARG TORCH_VERSION=2.9.1
+ARG PY_VERSION=3.12
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt update \
+    && apt install -y \
+    sudo \
+    git \
+    build-essential \
+    git-lfs \
+    wget \
+    curl \
+    liblz4-dev \
+    libncurses-dev \
+    libssl-dev \
+    libzstd-dev \
+    xz-utils \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Setup uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+RUN uv venv -p ${PY_VERSION} /opt/venv
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# rocm and torch MUST be installed together or torch nightlies will 
+# mess up the rocm version
+RUN uv pip install pip cmake pybind11 build ninja scikit-build-core setuptools-scm numpy pytest && \
+    uv pip install --index-url https://rocm.nightlies.amd.com/v2/${GFX_FAMILY}/ "rocm[libraries,devel]"==${THE_ROCK_VERSION} torch==${TORCH_VERSION} && \
+    rocm-sdk init
+
+# warp_src is a named build context — see file header for invocation details.
+ENV QUADRANTS_SRC_DIR=/src/quadrants/   
+COPY . ${QUADRANTS_SRC_DIR}
+RUN git config --global --add safe.directory ${QUADRANTS_SRC_DIR}
+
+# Persist ROCm environment for interactive containers and build scripts
+RUN cat <<'EOF' > ~/.rocm-env.sh
+export ROCM_PATH=$(rocm-sdk path --root)
+export LD_LIBRARY_PATH=$(rocm-sdk path --root)/lib
+# necessary for rocm < 7.12 https://github.com/ROCm/TheRock/issues/3213
+export HIP_DEVICE_LIB_PATH=$(rocm-sdk path --root)/lib/llvm/amdgcn/bitcode
+EOF
+RUN echo 'source ~/.rocm-env.sh' >> ~/.bashrc
+
+WORKDIR ${QUADRANTS_SRC_DIR}
+RUN bash -c "source ~/.rocm-env.sh && \
+    bash .github/workflows/scripts_new/linux/1_prerequisites.sh && \
+    bash .github/workflows/scripts_new/linux/2_build.sh && \
+    bash .github/workflows/scripts_new/linux/3_install.sh"
