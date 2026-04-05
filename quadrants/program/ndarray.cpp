@@ -49,15 +49,6 @@ Ndarray::Ndarray(Program *prog,
     total_shape_.insert(total_shape_.begin(), element_shape.begin(),
                         element_shape.end());
   }
-  auto total_num_scalar =
-      std::accumulate(std::begin(total_shape_), std::end(total_shape_), 1LL,
-                      std::multiplies<>());
-  if (total_num_scalar > std::numeric_limits<int>::max()) {
-    ErrorEmitter(
-        QuadrantsIndexWarning(), &dbg_info,
-        "Ndarray index might be out of int32 boundary but int64 indexing is "
-        "not supported yet.");
-  }
   ndarray_alloc_ = prog->allocate_memory_on_device(nelement_ * element_size_,
                                                    prog->result_buffer);
 }
@@ -91,15 +82,6 @@ Ndarray::Ndarray(DeviceAllocation &devalloc,
   } else if (layout == ExternalArrayLayout::kSOA) {
     total_shape_.insert(total_shape_.begin(), element_shape.begin(),
                         element_shape.end());
-  }
-  auto total_num_scalar =
-      std::accumulate(std::begin(total_shape_), std::end(total_shape_), 1LL,
-                      std::multiplies<>());
-  if (total_num_scalar > std::numeric_limits<int>::max()) {
-    ErrorEmitter(
-        QuadrantsIndexWarning(), &dbg_info,
-        "Ndarray index might be out of int32 boundary but int64 indexing is "
-        "not supported yet.");
   }
 }
 
