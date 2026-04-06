@@ -1,10 +1,10 @@
 ARG BASE_IMAGE=ubuntu:24.04
 FROM ${BASE_IMAGE} AS base
 
-ARG THE_ROCK_VERSION=7.12.0a20260311
+ARG THE_ROCK_VERSION=7.11.0
 ARG GFX_FAMILY="gfx94X-dcgpu"
 ARG TORCH_VERSION=2.9.1
-ARG PY_VERSION=3.12
+ARG PY_VERSION=3.11
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update \
@@ -32,7 +32,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 # rocm and torch MUST be installed together or torch nightlies will 
 # mess up the rocm version
 RUN uv pip install pip cmake pybind11 build ninja scikit-build-core setuptools-scm numpy pytest && \
-    uv pip install --index-url https://rocm.nightlies.amd.com/v2/${GFX_FAMILY}/ "rocm[libraries,devel]"==${THE_ROCK_VERSION} torch==${TORCH_VERSION} && \
+    uv pip install --index-url https://repo.amd.com/rocm/whl/${GFX_FAMILY}/ "rocm[libraries,devel]"==${THE_ROCK_VERSION} torch==${TORCH_VERSION} && \
     rocm-sdk init
 
 # warp_src is a named build context — see file header for invocation details.
@@ -44,6 +44,7 @@ RUN git config --global --add safe.directory ${QUADRANTS_SRC_DIR}
 RUN cat <<'EOF' > ~/.rocm-env.sh
 export ROCM_PATH=$(rocm-sdk path --root)
 export LD_LIBRARY_PATH=$(rocm-sdk path --root)/lib
+export PATH=$(rocm-sdk path --bin):$PATH
 # necessary for rocm < 7.12 https://github.com/ROCm/TheRock/issues/3213
 export HIP_DEVICE_LIB_PATH=$(rocm-sdk path --root)/lib/llvm/amdgcn/bitcode
 EOF
