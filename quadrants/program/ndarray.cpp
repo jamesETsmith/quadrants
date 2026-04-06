@@ -34,7 +34,7 @@ Ndarray::Ndarray(Program *prog,
       dbg_info(dbg_info_),
       nelement_(std::accumulate(std::begin(shape_),
                                 std::end(shape_),
-                                1,
+                                (std::size_t)1,
                                 std::multiplies<>())),
       element_size_(data_type_size(dtype)),
       prog_(prog) {
@@ -65,7 +65,7 @@ Ndarray::Ndarray(DeviceAllocation &devalloc,
       dbg_info(dbg_info),
       nelement_(std::accumulate(std::begin(shape),
                                 std::end(shape),
-                                1,
+                                (std::size_t)1,
                                 std::multiplies<>())),
       element_size_(data_type_size(dtype)) {
   // When element_shape is specified but layout is not, default layout is AOS.
